@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Bot Webhook Manager</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .set-btn {
+            background-color: #27ae60;
+            color: white;
+        }
+        .set-btn:hover {
+            background-color: #219653;
+        }
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+        .check-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        .check-btn:hover {
+            background-color: #2980b9;
+        }
+        .output-box {
+            min-height: 150px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 6px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+            display: none;
+        }
+        .loading:after {
+            content: "...";
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: "."; }
+            40% { content: ".."; }
+            60%, 100% { content: "..."; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Telegram Bot Webhook Manager</h1>
+        
+        <div class="form-group">
+            <label for="botToken">Bot Token</label>
+            <input type="text" id="botToken" placeholder="Enter your bot token (e.g., 123456789:ABC-DEF1234ghIkl-zyx57W2v1u123ew11" value="5953241738:AAHXdQTI5B6su_pwM0O7PgU-JhqJJXDPm5w">
+        </div>
+        
+        <div class="form-group">
+            <label for="webhookUrl">Webhook URL</label>
+            <input type="text" id="webhookUrl" placeholder="Enter webhook URL (e.g., https://yourdomain.com/webhook)" value="https://forward-bot-seven.vercel.app/webhook">
+        </div>
+        
+        <div class="button-group">
+            <button class="set-btn" onclick="setWebhook()">Set Webhook</button>
+            <button class="delete-btn" onclick="deleteWebhook()">Delete Webhook</button>
+            <button class="check-btn" onclick="getWebhookInfo()">Check Webhook</button>
+        </div>
+        
+        <div class="loading" id="loading">Processing</div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="form-group">
+            <label for="output">API Response</label>
+            <div class="output-box" id="output">Response will appear here...</div>
+        </div>
+    </div>
+
+    <script>
+        async function callTelegramApi(endpoint, params = {}) {
+            const botToken = document.getElementById('botToken').value.trim();
+            const loading = document.getElementById('loading');
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+            
+            if (!botToken) {
+                showStatus('Please enter your bot token', 'error');
+                return;
+            }
+            
+            // Show loading indicator
+            loading.style.display = 'block';
+            status.style.display = 'none';
+            
+            try {
+                // Build URL with parameters
+                const url = new URL(`https://api.telegram.org/bot${botToken}/${endpoint}`);
+                Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+                
+                // Make the API call
+                const response = await fetch(url, { method: 'POST' });
+                const data = await response.json();
+                
+                // Display results
+                output.textContent = JSON.stringify(data, null, 2);
+                
+                if (data.ok) {
+                    showStatus('Operation successful!', 'success');
+                } else {
+                    showStatus(`Error: ${data.description || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                output.textContent = `Error: ${error.message}`;
+                showStatus('Network error occurred', 'error');
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+        
+        function setWebhook() {
+            const webhookUrl = document.getElementById('webhookUrl').value.trim();
+            
+            if (!webhookUrl) {
+                showStatus('Please enter a webhook URL', 'error');
+                return;
+            }
+            
+            callTelegramApi('setWebhook', { url: webhookUrl });
+        }
+        
+        function deleteWebhook() {
+            if (confirm('Are you sure you want to delete the webhook?')) {
+                callTelegramApi('deleteWebhook');
+            }
+        }
+        
+        function getWebhookInfo() {
+            callTelegramApi('getWebhookInfo');
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
